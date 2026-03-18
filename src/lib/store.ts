@@ -252,18 +252,23 @@ export interface WishlistItem {
   price: number;
   image: string;
   brand?: string;
+  slug?: string;
+  category?: string;
 }
 
 interface WishlistStore {
   items: WishlistItem[];
   isOpen: boolean;
-  addToWishlist: (item: Omit<WishlistItem, 'id'>) => void;
-  removeFromWishlist: (productId: string) => void;
+  isLoading: boolean;
+  addToWishlist: (item: Omit<WishlistItem, 'id'>) => Promise<void>;
+  removeFromWishlist: (productId: string) => Promise<void>;
   isInWishlist: (productId: string) => boolean;
   openWishlist: () => void;
   closeWishlist: () => void;
   toggleWishlist: () => void;
   getTotalItems: () => number;
+  loadFromServer: (customerId: string) => Promise<void>;
+  syncWithServer: (customerId: string) => Promise<void>;
 }
 
 export const useWishlistStore = create<WishlistStore>()(
@@ -271,21 +276,82 @@ export const useWishlistStore = create<WishlistStore>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      isLoading: false,
       
-      addToWishlist: (item) => {
-        const items = get().items;
-        const exists = items.find(i => i.productId === item.productId);
-        if (!exists) {
-          set({ 
-            items: [...items, { ...item, id: `wishlist-${item.productId}-${Date.now()}` }] 
-          });
+      loadFromServer: async (customerId: string) => {
+        try {
+          set({ isLoading: true });
+          const response = await fetch(`/api/wishlist?customerId=${customerId}`);
+          if (response.ok) {
+            const data = await response.json();
+            set({ items: data.items || [], isLoading: false });
+          } else {
+            set({ isLoading: false });
+          }
+        } catch (error) {
+          console.error('Failed to load wishlist from server:', error);
+          set({ isLoading: false });
         }
       },
       
-      removeFromWishlist: (productId) => {
+      syncWithServer: async (customerId: string) => {
+        // Sync local items to server
+        const items = get().items;
+        for (const item of items) {
+          try {
+            await fetch('/api/wishlist', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ customerId, productId: item.productId }),
+            });
+          } catch (error) {
+            console.error('Failed to sync wishlist item:', error);
+          }
+        }
+      },
+      
+      addToWishlist: async (item) => {
+        const items = get().items;
+        const exists = items.find(i => i.productId === item.productId);
+        if (!exists) {
+          const newItem = { ...item, id: `wishlist-${item.productId}-${Date.now()}` };
+          set({ items: [...items, newItem] });
+          
+          // Sync with server if user is logged in (check auth store)
+          const authState = useAuthStore.getState();
+          if (authState.isLoggedIn && authState.user?.id) {
+            try {
+              await fetch('/api/wishlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  customerId: authState.user.id, 
+                  productId: item.productId 
+                }),
+              });
+            } catch (error) {
+              console.error('Failed to add to server wishlist:', error);
+            }
+          }
+        }
+      },
+      
+      removeFromWishlist: async (productId: string) => {
         set((state) => ({
           items: state.items.filter((item) => item.productId !== productId),
         }));
+        
+        // Sync with server if user is logged in
+        const authState = useAuthStore.getState();
+        if (authState.isLoggedIn && authState.user?.id) {
+          try {
+            await fetch(`/api/wishlist?customerId=${authState.user.id}&productId=${productId}`, {
+              method: 'DELETE',
+            });
+          } catch (error) {
+            console.error('Failed to remove from server wishlist:', error);
+          }
+        }
       },
       
       isInWishlist: (productId) => {

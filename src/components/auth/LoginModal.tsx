@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Chrome, Loader2, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Chrome, Loader2, Phone, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore, useCustomerStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,10 @@ export function LoginModal() {
   const [error, setError] = useState('');
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<'valid' | 'invalid' | 'checking' | null>(null);
-  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | 'magic' | null>(null);
+  const [showMagicLink, setShowMagicLink] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [appleSignIn, setAppleSignIn] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -156,41 +159,109 @@ export function LoginModal() {
     setEmailStatus(null);
   };
 
-  // Handle Google Sign In
+  // Handle Google Sign In with Supabase
   const handleGoogleSignIn = async () => {
     setSocialLoading('google');
     try {
-      // Check if Google OAuth is configured
-      const res = await fetch('/api/auth/google');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
-      if (res.redirected) {
-        // OAuth flow started, will redirect to Google
+      if (!supabaseUrl || !supabaseKey || supabaseKey === 'YOUR_ANON_KEY_HERE') {
+        setError('Google Sign In requires Supabase configuration. Please use email/password.');
         return;
       }
       
-      const data = await res.json();
-      if (data.error) {
-        setError(data.message || 'Google Sign In is not configured. Please use email/password.');
+      // Use Supabase OAuth
+      const { getSupabaseClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseClient();
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) {
+        setError(error.message || 'Failed to sign in with Google');
       }
-    } catch {
+    } catch (err) {
+      console.error('Google sign in error:', err);
       setError('Failed to initiate Google Sign In. Please try again.');
     } finally {
       setSocialLoading(null);
     }
   };
 
-  // Handle Apple Sign In
+  // Handle Apple Sign In with Supabase
   const handleAppleSignIn = async () => {
     setSocialLoading('apple');
     try {
-      const res = await fetch('/api/auth/apple');
-      const data = await res.json();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
-      if (data.error) {
-        setError('Apple Sign In requires Apple Developer account setup. Please use email/password or Google Sign In.');
+      if (!supabaseUrl || !supabaseKey || supabaseKey === 'YOUR_ANON_KEY_HERE') {
+        setError('Apple Sign In requires Supabase configuration. Please use email/password.');
+        return;
       }
-    } catch {
+      
+      // Use Supabase OAuth
+      const { getSupabaseClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseClient();
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) {
+        setError(error.message || 'Failed to sign in with Apple');
+      }
+    } catch (err) {
+      console.error('Apple sign in error:', err);
       setError('Failed to initiate Apple Sign In. Please try again.');
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  // Handle Magic Link (Passwordless Login)
+  const handleMagicLink = async () => {
+    if (!formData.email) {
+      setError('Please enter your email to receive a magic link');
+      return;
+    }
+    
+    setSocialLoading('magic');
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseKey === 'YOUR_ANON_KEY_HERE') {
+        setError('Magic Link requires Supabase configuration. Please use email/password.');
+        return;
+      }
+      
+      const { getSupabaseClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseClient();
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email: formData.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) {
+        setError(error.message || 'Failed to send magic link');
+      } else {
+        setMagicLinkSent(true);
+      }
+    } catch (err) {
+      console.error('Magic link error:', err);
+      setError('Failed to send magic link. Please try again.');
     } finally {
       setSocialLoading(null);
     }
@@ -411,6 +482,23 @@ export function LoginModal() {
                   )}
                   Continue with Apple
                 </button>
+
+                {/* Magic Link */}
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={handleMagicLink}
+                    disabled={isLoading || !!socialLoading || !formData.email}
+                    className="w-full flex items-center justify-center gap-3 border border-white/10 rounded-lg py-3 text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                  >
+                    {socialLoading === 'magic' ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-5 h-5" />
+                    )}
+                    {magicLinkSent ? 'Magic Link Sent!' : 'Send Magic Link'}
+                  </button>
+                )}
               </div>
             </form>
 
