@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     
@@ -27,10 +27,10 @@ export async function POST() {
       }
     );
 
-    // Get the origin from the request or use a default
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || 
-                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   'http://localhost:3000';
+    // Get the origin from the request headers
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
@@ -40,6 +40,7 @@ export async function POST() {
     });
 
     if (error) {
+      console.error('Apple OAuth error:', error);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
