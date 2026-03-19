@@ -3,11 +3,15 @@ import { PrismaClient } from '@prisma/client'
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 function createPrismaClient() {
+  // In production (Vercel), use the direct URL to avoid pooler limits
+  // In development, use the pooler URL
+  const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+  
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: databaseUrl,
       },
     },
   })

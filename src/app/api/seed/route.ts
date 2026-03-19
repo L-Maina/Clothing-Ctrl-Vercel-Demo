@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import crypto from 'crypto';
+
+// Helper function to hash password (same as admin-auth-server)
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto
+    .pbkdf2Sync(password, salt, 10000, 64, 'sha512')
+    .toString('hex');
+  return `${salt}:${hash}`;
+}
 
 export async function POST() {
   try {
@@ -282,11 +292,31 @@ export async function POST() {
       ],
     });
 
+    // Create default admin user
+    // Password: Admin123!
+    const hashedPassword = hashPassword('Admin123!');
+    await db.adminUser.create({
+      data: {
+        email: 'admin@clothingctrl.co.ke',
+        name: 'Admin User',
+        password: hashedPassword,
+        role: 'SUPER_ADMIN',
+        isTemporaryPassword: false,
+        onboardingComplete: true,
+        emailVerified: true,
+        isActive: true,
+      },
+    });
+
     return NextResponse.json({ 
       success: true, 
       message: 'Database seeded successfully',
       products: productsData.length,
       reviews: reviewsData.length,
+      adminCredentials: {
+        email: 'admin@clothingctrl.co.ke',
+        password: 'Admin123!',
+      },
     });
   } catch (error) {
     console.error('Seed error:', error);
