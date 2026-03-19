@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuthStore, useCustomerStore, useCartStore, useWishlistStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 /**
  * AuthProvider handles OAuth callbacks and session persistence.
@@ -9,10 +10,11 @@ import { useAuthStore, useCustomerStore, useCartStore, useWishlistStore } from '
  * auth state is properly updated after OAuth redirects.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, logout: authLogout } = useAuthStore();
+  const { isLoggedIn, logout: authLogout, user } = useAuthStore();
   const { setCustomer, addLoyaltyPoints, logout: customerLogout } = useCustomerStore();
   const { loadFromServer: loadCartFromServer, clearCart } = useCartStore();
   const { loadFromServer: loadWishlistFromServer } = useWishlistStore();
+  const hasShownDeletedToast = useRef(false);
 
   useEffect(() => {
     // Check for auth success/error from OAuth redirect
@@ -98,8 +100,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear cart when logged out
       clearCart();
       customerLogout();
+      hasShownDeletedToast.current = false;
     }
   }, [isLoggedIn, clearCart, customerLogout]);
+
+  // Check if user account still exists (for deleted account detection)
+  useEffect(() => {
+    if (!isLoggedIn || !user?.email) return;
+
+    const checkAccountExists = async () => {
+      try {
+        const response = await fetch(`/api/auth/customer/me?email=${encodeURIComponent(user.email)}`);
+        
+        if (response.status === 404) {
+          // Account has been deleted
+          if (!hasShownDeletedToast.current) {
+            hasShownDeletedToast.current = true;
+            toast.error('Your account has been deleted', {
+              description: 'You will be logged out. Please create a new account to continue.',
+              duration: 5000,
+            });
+            
+            // Log out after showing toast
+            setTimeout(() => {
+              authLogout();
+              // Clear all local storage data
+              localStorage.removeItem('clothing-ctrl-auth');
+              localStorage.removeItem('clothing-ctrl-customer');
+              localStorage.removeItem('clothing-ctrl-cart-v3');
+              localStorage.removeItem('clothing-ctrl-wishlist-v3');
+              // Reload page to reset state
+              window.location.href = '/';
+            }, 2000);
+          }
+        } else if (response.status === 403) {
+          // Account has been deactivated
+          if (!hasShownDeletedToast.current) {
+            hasShownDeletedToast.current = true;
+            toast.error('Your account has been deactivated', {
+              description: 'Please contact support for assistance.',
+              duration: 5000,
+            });
+            
+            setTimeout(() => {
+              authLogout();
+              localStorage.removeItem('clothing-ctrl-auth');
+              localStorage.removeItem('clothing-ctrl-customer');
+              localStorage.removeItem('clothing-ctrl-cart-v3');
+              localStorage.removeItem('clothing-ctrl-wishlist-v3');
+              window.location.href = '/';
+            }, 2000);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check account status:', error);
+      }
+    };
+
+    // Check immediately
+    checkAccountExists();
+    
+    // Then check every 30 seconds
+    const interval = setInterval(checkAccountExists, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isLoggedIn, user?.email, authLogout]);
 
   return <>{children}</>;
 }
