@@ -432,9 +432,10 @@ export function Navbar() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.3 }}
-              className="absolute top-0 left-0 w-[85%] max-w-sm h-full bg-zinc-950 border-r border-white/10"
+              className="absolute top-0 left-0 w-[85%] max-w-sm h-full bg-zinc-950 border-r border-white/10 flex flex-col"
             >
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
+              {/* Header - Fixed */}
+              <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
                 <span className="text-xl font-bold text-white">
                   {settings.storeName?.replace('Ctrl', '').trim().toUpperCase() || 'CLOTHING'}<span className="text-amber-400">{settings.storeName?.includes('Ctrl') ? 'CTRL' : ''}</span>
                 </span>
@@ -446,121 +447,125 @@ export function Navbar() {
                 </button>
               </div>
 
-              <nav className="p-6">
-                <ul className="space-y-6">
-                  {navLinks.map((link, index) => (
-                    <motion.li
-                      key={link.href}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Link
-                        href={link.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="text-2xl font-bold text-white hover:text-amber-400 transition-colors"
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto">
+                <nav className="p-6">
+                  <ul className="space-y-6">
+                    {navLinks.map((link, index) => (
+                      <motion.li
+                        key={link.href}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
                       >
-                        {link.label}
-                      </Link>
-                    </motion.li>
-                  ))}
-                </ul>
+                        <Link
+                          href={link.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-2xl font-bold text-white hover:text-amber-400 transition-colors"
+                        >
+                          {link.label}
+                        </Link>
+                      </motion.li>
+                    ))}
+                  </ul>
 
-                {/* Mobile Auth */}
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  {isLoggedIn ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
-                          <span className="text-black font-bold">
-                            {user?.name?.charAt(0).toUpperCase() || user?.email[0].toUpperCase()}
-                          </span>
+                  {/* Mobile Auth */}
+                  <div className="mt-8 pt-6 border-t border-white/10">
+                    {isLoggedIn ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
+                            <span className="text-black font-bold">
+                              {user?.name?.charAt(0).toUpperCase() || user?.email[0].toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{user?.name || 'Customer'}</p>
+                            <p className="text-white/50 text-sm">{user?.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-white font-medium">{user?.name || 'Customer'}</p>
-                          <p className="text-white/50 text-sm">{user?.email}</p>
-                        </div>
+                        
+                        {/* Mobile Loyalty Points */}
+                        {user && user.loyaltyPoints > 0 && (
+                          <div className="flex items-center justify-between bg-purple-500/10 rounded-lg px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              <Award className={cn("w-4 h-4", tierColors[user.loyaltyTier] || 'text-purple-400')} />
+                              <span className="text-white/70 text-sm">{user.loyaltyTier} Member</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-purple-400" />
+                              <span className="text-purple-400 font-bold">{user.loyaltyPoints} pts</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <Link
+                          href="/account"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2 text-white/70 hover:text-amber-400 transition-colors"
+                        >
+                          <User className="w-4 h-4" />
+                          My Account
+                        </Link>
+                        <Link
+                          href="/account/orders"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center gap-2 text-white/70 hover:text-amber-400 transition-colors"
+                        >
+                          <Package className="w-4 h-4" />
+                          My Orders
+                        </Link>
+                        <button
+                          onClick={() => {
+                            auth.logout();
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </button>
                       </div>
-                      
-                      {/* Mobile Loyalty Points */}
-                      {user && user.loyaltyPoints > 0 && (
-                        <div className="flex items-center justify-between bg-purple-500/10 rounded-lg px-4 py-2">
-                          <div className="flex items-center gap-2">
-                            <Award className={cn("w-4 h-4", tierColors[user.loyaltyTier] || 'text-purple-400')} />
-                            <span className="text-white/70 text-sm">{user.loyaltyTier} Member</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-purple-400" />
-                            <span className="text-purple-400 font-bold">{user.loyaltyPoints} pts</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <Link
-                        href="/account"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-2 text-white/70 hover:text-amber-400 transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        My Account
-                      </Link>
-                      <Link
-                        href="/account/orders"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-2 text-white/70 hover:text-amber-400 transition-colors"
-                      >
-                        <Package className="w-4 h-4" />
-                        My Orders
-                      </Link>
+                    ) : (
                       <button
                         onClick={() => {
-                          auth.logout();
+                          auth.openLoginModal();
                           setIsMobileMenuOpen(false);
                         }}
-                        className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                        className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-black font-bold transition-colors"
                       >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
+                        SIGN IN / SIGN UP
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        auth.openLoginModal();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-black font-bold transition-colors"
-                    >
-                      SIGN IN / SIGN UP
-                    </button>
-                  )}
-                </div>
-
-                {/* Mobile Currency Selector */}
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Currency</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(CURRENCIES).slice(0, 6).map(([code, info]) => (
-                      <button
-                        key={code}
-                        onClick={() => setCurrency(code as CurrencyCode)}
-                        className={cn(
-                          "px-3 py-1.5 text-sm rounded-full border transition-colors",
-                          currency === code 
-                            ? "bg-amber-400 text-black border-amber-400" 
-                            : "border-white/20 text-white/70 hover:border-amber-400/50"
-                        )}
-                      >
-                        {info.flag} {code}
-                      </button>
-                    ))}
+                    )}
                   </div>
-                </div>
-              </nav>
 
-              <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/10">
-                <p className="text-white/60 text-sm mb-4">Follow us</p>
-                <div className="flex gap-4">
+                  {/* Mobile Currency Selector */}
+                  <div className="mt-8 pt-6 border-t border-white/10">
+                    <p className="text-white/50 text-xs uppercase tracking-wider mb-3">Currency</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(CURRENCIES).slice(0, 6).map(([code, info]) => (
+                        <button
+                          key={code}
+                          onClick={() => setCurrency(code as CurrencyCode)}
+                          className={cn(
+                            "px-3 py-1.5 text-sm rounded-full border transition-colors",
+                            currency === code 
+                              ? "bg-amber-400 text-black border-amber-400" 
+                              : "border-white/20 text-white/70 hover:border-amber-400/50"
+                          )}
+                        >
+                          {info.flag} {code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </nav>
+              </div>
+
+              {/* Footer - Fixed at bottom with safe area */}
+              <div className="flex-shrink-0 p-6 border-t border-white/10 bg-zinc-950 pb-safe">
+                <p className="text-white/60 text-sm mb-3">Follow us</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {socialLinks.length > 0 ? (
                     socialLinks.map((link) => (
                       <a 
