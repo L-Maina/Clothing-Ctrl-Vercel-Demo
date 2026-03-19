@@ -24,6 +24,11 @@ node_modules
 .DS_Store
 *.pem
 
+# system files (sandbox environment)
+.config
+.accesslog
+.stats
+
 # debug
 npm-debug.log*
 yarn-debug.log*
