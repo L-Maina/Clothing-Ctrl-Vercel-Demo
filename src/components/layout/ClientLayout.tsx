@@ -8,6 +8,7 @@ import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBanner } from '@/components/layout/AnnouncementBanner';
 import { CookieConsent } from '@/components/layout/CookieConsent';
 import { useBannerHeight } from '@/components/layout/AnnouncementBanner';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 // Lazy load modal/drawer components - only load when needed
 const CartDrawer = dynamic(
@@ -65,34 +66,36 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   const headerOffset = bannerHeight + navbarHeight;
   
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      {/* Announcement Banner - Live synced from admin settings */}
-      <AnnouncementBanner />
-      
-      <Navbar />
-      
-      {/* Lazy loaded modals/drawers - only loaded when opened */}
-      <Suspense fallback={null}>
-        <CartDrawer />
-        <QuickView />
-        <LoginModal />
-        <WishlistDrawer />
-      </Suspense>
-      
-      {/* Page Content - with padding for fixed header */}
-      <div className="flex-1" style={{ paddingTop: `${headerOffset}px` }}>
-        {children}
+    <AuthProvider>
+      <div className="min-h-screen bg-black flex flex-col">
+        {/* Announcement Banner - Live synced from admin settings */}
+        <AnnouncementBanner />
+        
+        <Navbar />
+        
+        {/* Lazy loaded modals/drawers - only loaded when opened */}
+        <Suspense fallback={null}>
+          <CartDrawer />
+          <QuickView />
+          <LoginModal />
+          <WishlistDrawer />
+        </Suspense>
+        
+        {/* Page Content - with padding for fixed header */}
+        <div className="flex-1" style={{ paddingTop: `${headerOffset}px` }}>
+          {children}
+        </div>
+        
+        <Footer />
+        
+        {/* Style Assistant - Lazy loaded floating component */}
+        <Suspense fallback={null}>
+          <StyleAssistant />
+        </Suspense>
+        
+        {/* Cookie Consent Banner */}
+        <CookieConsent />
       </div>
-      
-      <Footer />
-      
-      {/* Style Assistant - Lazy loaded floating component */}
-      <Suspense fallback={null}>
-        <StyleAssistant />
-      </Suspense>
-      
-      {/* Cookie Consent Banner */}
-      <CookieConsent />
-    </div>
+    </AuthProvider>
   );
 }
