@@ -58,6 +58,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card' | 'paypal'>('mpesa');
+  const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [isGuestCheckout, setIsGuestCheckout] = useState(false);
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
@@ -182,6 +183,11 @@ export default function CheckoutPage() {
 
   // Calculate shipping based on location and settings
   const calculateShipping = () => {
+    // Free shipping for store pickup
+    if (deliveryMethod === 'pickup') {
+      return 0;
+    }
+    
     const cityLower = formData.city.toLowerCase().trim();
     const countryLower = formData.country.toLowerCase().trim();
     
@@ -276,7 +282,15 @@ export default function CheckoutPage() {
           color: item.color,
           size: item.size,
         })),
-        shippingAddress: {
+        shippingAddress: deliveryMethod === 'pickup' ? {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: 'PICK UP AT STORE',
+          city: 'Nairobi',
+          country: 'Kenya',
+          postalCode: '',
+          phone: formData.phone,
+        } : {
           firstName: formData.firstName,
           lastName: formData.lastName,
           address: formData.address,
@@ -285,6 +299,7 @@ export default function CheckoutPage() {
           postalCode: formData.postalCode,
           phone: formData.phone,
         },
+        deliveryMethod,
         paymentMethod,
         isGuestOrder: !isLoggedIn,
         discountCode: appliedDiscount?.code || null,
@@ -575,12 +590,76 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Shipping */}
+              {/* Delivery Method */}
               <div className="bg-zinc-900 border border-white/10 p-6">
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <Truck className="w-5 h-5 text-amber-400" />
-                  Shipping Address
+                  Delivery Method
                 </h2>
+                
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Delivery Option */}
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod('delivery')}
+                    className={cn(
+                      "p-4 border-2 text-left transition-all rounded-lg",
+                      deliveryMethod === 'delivery'
+                        ? "border-amber-400 bg-amber-400/10"
+                        : "border-white/20 hover:border-white/40 bg-zinc-800/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Truck className={cn("w-5 h-5", deliveryMethod === 'delivery' ? "text-amber-400" : "text-white/60")} />
+                      <span className="font-bold text-white">Delivery</span>
+                    </div>
+                    <p className="text-white/60 text-sm">We deliver to your doorstep</p>
+                    <p className="text-amber-400 text-xs mt-1">KSh 200 - KSh 2,000 based on location</p>
+                  </button>
+                  
+                  {/* Pickup Option */}
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod('pickup')}
+                    className={cn(
+                      "p-4 border-2 text-left transition-all rounded-lg",
+                      deliveryMethod === 'pickup'
+                        ? "border-amber-400 bg-amber-400/10"
+                        : "border-white/20 hover:border-white/40 bg-zinc-800/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <MapPin className={cn("w-5 h-5", deliveryMethod === 'pickup' ? "text-amber-400" : "text-white/60")} />
+                      <span className="font-bold text-white">Pick Up at Store</span>
+                    </div>
+                    <p className="text-white/60 text-sm">Collect from our Nairobi store</p>
+                    <p className="text-green-400 text-xs mt-1">FREE - No shipping cost</p>
+                  </button>
+                </div>
+                
+                {/* Pickup Info */}
+                {deliveryMethod === 'pickup' && (
+                  <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <p className="text-green-400 font-medium mb-2">📍 Pickup Location</p>
+                    <p className="text-white/80 text-sm">
+                      Moi Avenue, Nairobi CBD<br/>
+                      2nd Floor, Room 205<br/>
+                      Open: Mon-Sat, 9AM - 9PM
+                    </p>
+                    <p className="text-white/60 text-xs mt-2">
+                      You'll receive a notification when your order is ready for pickup (usually within 2-4 hours).
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Shipping Address - only show for delivery */}
+              {deliveryMethod === 'delivery' && (
+                <div className="bg-zinc-900 border border-white/10 p-6">
+                  <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-amber-400" />
+                    Shipping Address
+                  </h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <input
                     type="text"
@@ -677,6 +756,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Payment */}
               <div className="bg-zinc-900 border border-white/10 p-6">
