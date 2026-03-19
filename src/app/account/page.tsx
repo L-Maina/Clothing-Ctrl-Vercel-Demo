@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -82,7 +82,7 @@ interface CustomerStats {
   loyaltyTier: string;
 }
 
-export default function AccountPage() {
+function AccountPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
@@ -617,5 +617,24 @@ export default function AccountPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function AccountPageFallback() {
+  return (
+    <div className="min-h-screen bg-black pt-24 pb-12 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+        <p className="text-white/60">Loading account...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<AccountPageFallback />}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

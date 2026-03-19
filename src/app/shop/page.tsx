@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shirt, Footprints, Gem, Filter, X, ArrowLeft } from 'lucide-react';
+import { Shirt, Footprints, Gem, Filter, X, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { ProductCard } from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ const brandFilters = [
 
 const conditionFilters = ['All', 'New', 'Thrifting'];
 
-export default function ShopPage() {
+function ShopPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const brandFromUrl = searchParams.get('brand');
@@ -372,5 +372,26 @@ export default function ShopPage() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function ShopPageFallback() {
+  return (
+    <main className="flex-1 pt-24 pb-12">
+      <div className="container mx-auto px-4 lg:px-8">
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+          <p className="text-white/60 mt-4">Loading shop...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={<ShopPageFallback />}>
+      <ShopPageContent />
+    </Suspense>
   );
 }
