@@ -56,8 +56,8 @@ export async function POST() {
         openHour: '09:00',
         closeHour: '21:00',
         openDays: 'Mon-Sat',
-        bannerEnabled: true,
-        bannerText: '🎉 FREE SHIPPING on orders over KSh 5,000! Use code: WELCOME10',
+        bannerEnabled: false,
+        bannerText: null,
       },
     });
 
