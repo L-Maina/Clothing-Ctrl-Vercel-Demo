@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Eye, EyeOff, Chrome, Loader2, Phone, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, Chrome, Loader2, Phone, AlertCircle, CheckCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore, useCustomerStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -494,9 +494,9 @@ export function LoginModal() {
                     {socialLoading === 'magic' ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <Sparkles className="w-5 h-5" />
+                      <Zap className="w-5 h-5 text-amber-400" />
                     )}
-                    {magicLinkSent ? 'Magic Link Sent!' : 'Send Magic Link'}
+                    {magicLinkSent ? '✓ Check Your Inbox!' : 'Instant Sign-In'}
                   </button>
                 )}
               </div>
