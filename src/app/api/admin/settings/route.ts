@@ -39,7 +39,8 @@ export async function POST(request: Request) {
     // Check if settings exist
     const existing = await db.storeSettings.findFirst();
 
-    const settingsData = {
+    // Build settings data - only include fields that exist in schema
+    const settingsData: Record<string, unknown> = {
       storeName: body.storeName,
       storeDescription: body.storeDescription,
       storeEmail: body.storeEmail,
@@ -58,6 +59,36 @@ export async function POST(request: Request) {
       metaDescription: body.metaDescription,
     };
 
+    // Add shipping/loyalty fields if they exist in the database schema
+    // These will be ignored if columns don't exist yet
+    if (body.shippingNairobi !== undefined) {
+      settingsData.shippingNairobi = body.shippingNairobi;
+    }
+    if (body.shippingKenya !== undefined) {
+      settingsData.shippingKenya = body.shippingKenya;
+    }
+    if (body.shippingInternational !== undefined) {
+      settingsData.shippingInternational = body.shippingInternational;
+    }
+    if (body.shippingFreeThreshold !== undefined) {
+      settingsData.shippingFreeThreshold = body.shippingFreeThreshold;
+    }
+    if (body.loyaltyPointsPerShilling !== undefined) {
+      settingsData.loyaltyPointsPerShilling = body.loyaltyPointsPerShilling;
+    }
+    if (body.loyaltyBronzeThreshold !== undefined) {
+      settingsData.loyaltyBronzeThreshold = body.loyaltyBronzeThreshold;
+    }
+    if (body.loyaltySilverThreshold !== undefined) {
+      settingsData.loyaltySilverThreshold = body.loyaltySilverThreshold;
+    }
+    if (body.loyaltyGoldThreshold !== undefined) {
+      settingsData.loyaltyGoldThreshold = body.loyaltyGoldThreshold;
+    }
+    if (body.loyaltyPlatinumThreshold !== undefined) {
+      settingsData.loyaltyPlatinumThreshold = body.loyaltyPlatinumThreshold;
+    }
+
     let settings;
     if (existing) {
       // Update existing settings
@@ -75,6 +106,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ settings });
   } catch (error) {
     console.error('Failed to save store settings:', error);
-    return NextResponse.json({ error: 'Failed to save settings', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to save settings', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 });
   }
 }
