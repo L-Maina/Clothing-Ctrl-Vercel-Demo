@@ -3,25 +3,20 @@ import { PrismaClient } from '@prisma/client'
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 function createPrismaClient() {
-  // In production (Vercel), use the direct URL to avoid pooler limits
-  // In development, use the pooler URL
-  const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
-  
+  // Use DATABASE_URL for connection pooling (transactions mode)
+  // This is the correct setup for Supabase with Prisma
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
   })
 }
 
 let prisma: PrismaClient
 
 if (process.env.NODE_ENV === 'production') {
+  // In production (Vercel), create a new client each time to avoid connection issues
   prisma = createPrismaClient()
 } else {
+  // In development, use global to prevent multiple instances during hot reload
   if (!globalForPrisma.prisma) {
     globalForPrisma.prisma = createPrismaClient()
   }

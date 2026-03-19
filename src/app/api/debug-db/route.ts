@@ -7,7 +7,9 @@ export async function GET() {
     hasDirectUrl: !!process.env.DIRECT_URL,
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 50) + '...',
+    // Show more of the URL to debug
+    databaseUrlFull: process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':****@'),
+    directUrlFull: process.env.DIRECT_URL?.replace(/:[^:@]+@/, ':****@'),
     timestamp: new Date().toISOString(),
   };
 
