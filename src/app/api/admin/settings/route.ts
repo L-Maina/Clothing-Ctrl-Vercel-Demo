@@ -56,17 +56,6 @@ export async function POST(request: Request) {
       bannerLink: body.bannerLink,
       metaTitle: body.metaTitle,
       metaDescription: body.metaDescription,
-      // Shipping settings
-      shippingNairobi: body.shippingNairobi ?? 200,
-      shippingKenya: body.shippingKenya ?? 500,
-      shippingInternational: body.shippingInternational ?? 2000,
-      shippingFreeThreshold: body.shippingFreeThreshold ?? null,
-      // Loyalty settings
-      loyaltyPointsPerShilling: body.loyaltyPointsPerShilling ?? 0.01,
-      loyaltyBronzeThreshold: body.loyaltyBronzeThreshold ?? 0,
-      loyaltySilverThreshold: body.loyaltySilverThreshold ?? 200,
-      loyaltyGoldThreshold: body.loyaltyGoldThreshold ?? 500,
-      loyaltyPlatinumThreshold: body.loyaltyPlatinumThreshold ?? 1000,
     };
 
     let settings;
@@ -86,6 +75,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ settings });
   } catch (error) {
     console.error('Failed to save store settings:', error);
-    return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save settings', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
