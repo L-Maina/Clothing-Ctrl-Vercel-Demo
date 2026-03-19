@@ -1,0 +1,421 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Main product types
+enum ProductType {
+  CLOTHES
+  SHOES
+  ACCESSORIES
+}
+
+// Product categories
+model Category {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  type        ProductType   @default(CLOTHES)
+  description String?
+  image       String?
+  products    Product[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Products
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String
+  price       Float
+  compareAt   Float?
+  images      String      
+  colors      String      
+  sizes       String      
+  brand       String?
+  condition   String      @default("NEW")
+  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  inStock     Boolean     @default(true)
+  featured    Boolean     @default(false)
+  isNew       Boolean     @default(false)
+  isLimited   Boolean     @default(false)
+  limitedQty  Int?
+  dropDate    DateTime?
+  tags        String?     
+  reviews     Review[]
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  wishlistItems WishlistItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Reviews
+model Review {
+  id        String   @id @default(cuid())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  rating    Int
+  comment   String
+  image     String?
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Customer
+model Customer {
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  phone      String?
+  password   String?
+  addresses  String?     
+  currency   String      @default("KES")
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(true)
+  isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
+  orders     Order[]
+  cartItems  CartItem[]
+  wishlistItems WishlistItem[]
+  loyalty    Loyalty?
+  reviews    CommunityReview[]
+  notifications Notification[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+// Loyalty points
+model Loyalty {
+  id         String    @id @default(cuid())
+  points     Int       @default(0)
+  tier       String    @default("BRONZE")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// Cart items
+model CartItem {
+  id         String   @id @default(cuid())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  quantity   Int      @default(1)
+  color      String
+  size       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([customerId, productId, color, size])
+}
+
+// Wishlist items
+model WishlistItem {
+  id         String   @id @default(cuid())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+}
+
+// Orders
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId    String
+  status        String      @default("PENDING")
+  items         OrderItem[]
+  subtotal      Float
+  shipping      Float
+  tax           Float
+  total         Float
+  currency      String      @default("KES")
+  shippingAddr  String      
+  billingAddr   String?     
+  paymentMethod String?
+  paymentStatus String      @default("PENDING")
+  notes         String?     
+  trackingNumber String?
+  trackingUrl    String?
+  estimatedDelivery DateTime?
+  isGuestOrder  Boolean @default(false)
+  guestEmail    String?
+  reviewRequested Boolean @default(false)
+  reviewed        Boolean @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// Order items
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  price     Float
+  color     String
+  size      String
+}
+
+// Newsletter subscribers
+model Subscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  discountUsed Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// Next drop info
+model NextDrop {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  date        DateTime
+  image       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Community photos (user-generated content)
+model CommunityPhoto {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  username  String
+  productId String?
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Currency exchange rates cache
+model ExchangeRate {
+  id          String   @id @default(cuid())
+  currency    String   @unique
+  rate        Float
+  updatedAt   DateTime @default(now())
+}
+
+// Social media handles for the store
+model SocialHandle {
+  id          String   @id @default(cuid())
+  platform    String   @unique
+  handle      String
+  url         String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Admin users
+model AdminUser {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String
+  password              String
+  isTemporaryPassword   Boolean   @default(false)
+  onboardingComplete    Boolean   @default(false)
+  notificationEmail     String?
+  emailVerified         Boolean   @default(false)
+  lastLoginAt           DateTime?
+  passwordChangedAt     DateTime?
+  role                  String    @default("ADMIN")
+  permissions           String?   
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// Store settings (singleton - only one record should exist)
+model StoreSettings {
+  id              String   @id @default(cuid())
+  storeName       String   @default("Clothing Ctrl")
+  storeDescription String? 
+  storeEmail      String?
+  storePhone      String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?  @default("Nairobi")
+  country         String?  @default("Kenya")
+  openHour        String?  @default("09:00")
+  closeHour       String?  @default("21:00")
+  openDays        String?  @default("Mon-Sat")
+  bannerEnabled   Boolean  @default(false)
+  bannerText      String?
+  bannerLink      String?
+  metaTitle       String?
+  metaDescription String?  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Community reviews - linked to orders for verification
+model CommunityReview {
+  id             String   @id @default(cuid())
+  customer       Customer @relation(fields: [customerId], references: [id])
+  customerId     String
+  orderId        String
+  productId      String?
+  rating         Int
+  comment        String
+  imageUrl       String?
+  username       String
+  instagramHandle String?
+  verified       Boolean  @default(false)
+  approved       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Customer notifications
+model Notification {
+  id         String   @id @default(cuid())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  type       String
+  title      String
+  message    String
+  data       String?  
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// Kenya locations for autocomplete
+model KenyaLocation {
+  id        String   @id @default(cuid())
+  name      String
+  county    String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+// Notification logs for SMS/Email
+model NotificationLog {
+  id           String   @id @default(cuid())
+  type         String
+  recipient    String
+  subject      String?
+  message      String
+  status       String
+  orderId      String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+}
+
+// Email logs for admin notifications
+model EmailLog {
+  id           String   @id @default(cuid())
+  type         String
+  recipient    String
+  subject      String
+  status       String
+  adminUserId  String?
+  orderId      String?
+  errorMessage String?
+  metadata     String?  
+  createdAt    DateTime @default(now())
+}
+
+// Realtime sync events
+model SyncEvent {
+  id        String   @id @default(cuid())
+  type      String
+  action    String
+  data      String   
+  createdAt DateTime @default(now())
+}
+
+// Order Returns
+model OrderReturn {
+  id             String   @id @default(cuid())
+  orderId        String
+  orderNumber    String
+  customerId     String?
+  customerEmail  String
+  customerName   String?
+  reason         String
+  reasonDetails  String?  
+  items          String   
+  status         String   @default("PENDING")
+  refundMethod   String?
+  refundAmount   Float?
+  adminNotes     String?  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Discount/Coupon codes
+model Discount {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  type            String    @default("PERCENTAGE")
+  value           Float
+  minOrderAmount  Float?
+  maxUses         Int?
+  currentUses     Int       @default(0)
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean   @default(true)
+  appliesTo       String    @default("ALL")
+  productIds      String?   
+  categoryIds     String?   
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// FAQ items
+model FAQ {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  category    String   @default("GENERAL")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Contact form submissions
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("NEW")
+  reply     String?  
+  repliedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Cookie consent logs
+model CookieConsent {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  preferences  String   
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+}
