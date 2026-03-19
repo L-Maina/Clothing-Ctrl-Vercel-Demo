@@ -33,15 +33,18 @@ export interface CartItem {
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
-  addItem: (item: Omit<CartItem, 'id'>) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  isLoading: boolean;
+  addItem: (item: Omit<CartItem, 'id'>) => Promise<void>;
+  removeItem: (id: string) => Promise<void>;
+  updateQuantity: (id: string, quantity: number) => Promise<void>;
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
   getTotalItems: () => number;
   getSubtotal: () => number;
+  loadFromServer: (customerId: string) => Promise<void>;
+  setItems: (items: CartItem[]) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -49,8 +52,27 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      isLoading: false,
       
-      addItem: (item) => {
+      setItems: (items) => set({ items }),
+      
+      loadFromServer: async (customerId: string) => {
+        try {
+          set({ isLoading: true });
+          const response = await fetch(`/api/cart?customerId=${customerId}`);
+          if (response.ok) {
+            const data = await response.json();
+            set({ items: data.items || [], isLoading: false });
+          } else {
+            set({ isLoading: false });
+          }
+        } catch (error) {
+          console.error('Failed to load cart from server:', error);
+          set({ isLoading: false });
+        }
+      },
+      
+      addItem: async (item) => {
         const items = get().items;
         const existingIndex = items.findIndex(
           (i) => i.productId === item.productId && i.color === item.color && i.size === item.size
@@ -66,20 +88,76 @@ export const useCartStore = create<CartStore>()(
             isOpen: true 
           });
         }
+        
+        // Sync with server if logged in
+        const authState = useAuthStore.getState();
+        if (authState.isLoggedIn && authState.user?.id) {
+          try {
+            await fetch('/api/cart', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                customerId: authState.user.id,
+                productId: item.productId,
+                color: item.color,
+                size: item.size,
+                quantity: item.quantity,
+              }),
+            });
+          } catch (error) {
+            console.error('Failed to sync cart to server:', error);
+          }
+        }
       },
       
-      removeItem: (id) => {
+      removeItem: async (id) => {
+        const item = get().items.find(i => i.id === id);
+        
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
         }));
+        
+        // Sync with server if logged in
+        const authState = useAuthStore.getState();
+        if (authState.isLoggedIn && authState.user?.id && item) {
+          try {
+            await fetch(`/api/cart?customerId=${authState.user.id}&productId=${item.productId}&color=${encodeURIComponent(item.color)}&size=${encodeURIComponent(item.size)}`, {
+              method: 'DELETE',
+            });
+          } catch (error) {
+            console.error('Failed to remove from server cart:', error);
+          }
+        }
       },
       
-      updateQuantity: (id, quantity) => {
+      updateQuantity: async (id, quantity) => {
+        const item = get().items.find(i => i.id === id);
+        
         set((state) => ({
           items: state.items.map((item) =>
             item.id === id ? { ...item, quantity } : item
           ),
         }));
+        
+        // Sync with server if logged in
+        const authState = useAuthStore.getState();
+        if (authState.isLoggedIn && authState.user?.id && item) {
+          try {
+            await fetch('/api/cart', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                customerId: authState.user.id,
+                productId: item.productId,
+                color: item.color,
+                size: item.size,
+                quantity,
+              }),
+            });
+          } catch (error) {
+            console.error('Failed to update server cart:', error);
+          }
+        }
       },
       
       clearCart: () => {

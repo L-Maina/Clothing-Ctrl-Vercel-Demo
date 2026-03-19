@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAuthStore, useCustomerStore } from '@/lib/store';
+import { useAuthStore, useCustomerStore, useCartStore, useWishlistStore } from '@/lib/store';
 
 /**
  * AuthProvider handles OAuth callbacks and session persistence.
@@ -9,8 +9,10 @@ import { useAuthStore, useCustomerStore } from '@/lib/store';
  * auth state is properly updated after OAuth redirects.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn } = useAuthStore();
-  const { setCustomer, addLoyaltyPoints } = useCustomerStore();
+  const { isLoggedIn, logout: authLogout } = useAuthStore();
+  const { setCustomer, addLoyaltyPoints, logout: customerLogout } = useCustomerStore();
+  const { loadFromServer: loadCartFromServer, clearCart } = useCartStore();
+  const { loadFromServer: loadWishlistFromServer } = useWishlistStore();
 
   useEffect(() => {
     // Check for auth success/error from OAuth redirect
@@ -48,6 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             addLoyaltyPoints(user.loyaltyPoints);
           }
 
+          // Load cart from server
+          if (user.id) {
+            loadCartFromServer(user.id);
+            loadWishlistFromServer(user.id);
+          }
+
           // Clear the cookie
           document.cookie = 'auth_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         } catch {
@@ -64,43 +72,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [setCustomer, addLoyaltyPoints]);
+  }, [setCustomer, addLoyaltyPoints, loadCartFromServer, loadWishlistFromServer]);
 
-  // Fetch fresh user data on mount if logged in
+  // Load cart from server when user logs in (for regular login, not OAuth)
   useEffect(() => {
-    const fetchUser = async () => {
+    const loadUserData = async () => {
       if (!isLoggedIn) return;
       
       const authState = useAuthStore.getState();
-      if (!authState.user?.email) return;
+      if (!authState.user?.id) return;
 
-      try {
-        const response = await fetch(`/api/auth/customer/me?email=${encodeURIComponent(authState.user.email)}`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          const customer = data.customer;
-          
-          useAuthStore.setState({
-            user: {
-              id: customer.id,
-              email: customer.email,
-              name: customer.name,
-              phone: customer.phone,
-              loyaltyPoints: customer.loyalty?.points || 0,
-              loyaltyTier: customer.loyalty?.tier || 'BRONZE',
-            },
-          });
-          
-          setCustomer(customer.email, customer.name || undefined);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error);
-      }
+      // Load cart and wishlist from server
+      await Promise.all([
+        loadCartFromServer(authState.user.id),
+        loadWishlistFromServer(authState.user.id),
+      ]);
     };
 
-    fetchUser();
-  }, [isLoggedIn, setCustomer]);
+    loadUserData();
+  }, [isLoggedIn, loadCartFromServer, loadWishlistFromServer]);
+
+  // Handle logout - clear cart and customer data
+  useEffect(() => {
+    if (!isLoggedIn) {
+      // Clear cart when logged out
+      clearCart();
+      customerLogout();
+    }
+  }, [isLoggedIn, clearCart, customerLogout]);
 
   return <>{children}</>;
 }

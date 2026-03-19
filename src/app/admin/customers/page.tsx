@@ -29,6 +29,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Search,
   Download,
   MoreHorizontal,
@@ -46,6 +56,7 @@ import {
   Sparkles,
   Trophy,
   UserPlus,
+  Loader2,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -94,79 +105,50 @@ export default function AdminCustomers() {
   const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [showOrdersView, setShowOrdersView] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch('/api/admin/customers');
+      const data = await response.json();
+      setCustomers(data.customers || []);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/admin/customers');
-        const data = await response.json();
-        setCustomers(data.customers || []);
-      } catch (error) {
-        console.error('Failed to fetch customers:', error);
-        // Demo data
-        setCustomers([
-          {
-            id: '1',
-            email: 'john.doe@example.com',
-            name: 'John Doe',
-            phone: '+254712345678',
-            orders: 5,
-            totalSpent: 125000,
-            loyaltyTier: 'GOLD',
-            loyaltyPoints: 450,
-            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: '2',
-            email: 'jane.smith@example.com',
-            name: 'Jane Smith',
-            phone: '+254723456789',
-            orders: 3,
-            totalSpent: 85000,
-            loyaltyTier: 'SILVER',
-            loyaltyPoints: 280,
-            createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: '3',
-            email: 'mike.johnson@example.com',
-            name: 'Mike Johnson',
-            phone: '+254734567890',
-            orders: 8,
-            totalSpent: 250000,
-            loyaltyTier: 'PLATINUM',
-            loyaltyPoints: 1200,
-            createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: '4',
-            email: 'sarah.wilson@example.com',
-            name: 'Sarah Wilson',
-            phone: '+254745678901',
-            orders: 2,
-            totalSpent: 45000,
-            loyaltyTier: 'BRONZE',
-            loyaltyPoints: 90,
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: '5',
-            email: 'david.brown@example.com',
-            name: 'David Brown',
-            phone: '+254756789012',
-            orders: 1,
-            totalSpent: 15000,
-            loyaltyTier: 'BRONZE',
-            loyaltyPoints: 30,
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
+    setLoading(true);
+    fetchCustomers().finally(() => setLoading(false));
   }, []);
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/customers/${customerToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // Remove from local state
+        setCustomers(prev => prev.filter(c => c.id !== customerToDelete.id));
+        setDeleteDialogOpen(false);
+        setCustomerToDelete(null);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to delete customer');
+      }
+    } catch (error) {
+      console.error('Failed to delete customer:', error);
+      alert('Failed to delete customer');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-KE', {
@@ -424,7 +406,13 @@ export default function AdminCustomers() {
                               <Mail className="w-4 h-4 mr-2" />
                               Send Email
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-400 focus:text-red-400">
+                            <DropdownMenuItem 
+                              className="text-red-400 focus:text-red-400"
+                              onClick={() => {
+                                setCustomerToDelete(customer);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
                             </DropdownMenuItem>
@@ -651,6 +639,38 @@ export default function AdminCustomers() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-zinc-900 border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60">
+              Are you sure you want to delete <span className="text-white font-medium">{customerToDelete?.name || customerToDelete?.email}</span>? 
+              This will also delete all their orders, cart items, wishlist, and loyalty data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/10 text-white/60 hover:text-white hover:bg-white/5">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCustomer}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-500 text-white"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Customer'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
