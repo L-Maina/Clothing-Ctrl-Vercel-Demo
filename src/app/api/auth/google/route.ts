@@ -1,44 +1,51 @@
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-// Google OAuth configuration
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || '';
+export async function POST() {
+  try {
+    const cookieStore = await cookies();
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            } catch {
+              // Handle error in middleware
+            }
+          },
+        },
+      }
+    );
 
-export async function GET() {
-  // If Google OAuth is not configured, return error
-  if (!GOOGLE_CLIENT_ID) {
-    return NextResponse.json({
-      error: 'Google OAuth not configured',
-      message: 'To enable Google Sign In, add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your environment variables.',
-      setupInstructions: [
-        '1. Go to Google Cloud Console (https://console.cloud.google.com)',
-        '2. Create a new project or select existing one',
-        '3. Go to "APIs & Services" > "Credentials"',
-        '4. Click "Create Credentials" > "OAuth client ID"',
-        '5. Select "Web application"',
-        '6. Add authorized redirect URI: ' + (GOOGLE_REDIRECT_URI || 'https://your-domain.com/api/auth/google/callback'),
-        '7. Copy Client ID and Client Secret to your .env file',
-      ],
-    }, { status: 400 });
+    // Get the origin from the request or use a default
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || 
+                   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                   'http://localhost:3000';
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ url: data.url });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    return NextResponse.json({ error: 'Failed to initiate Google sign in' }, { status: 500 });
   }
-
-  // Generate random state for CSRF protection
-  const state = Math.random().toString(36).substring(2, 15);
-  
-  // Store state in a cookie for verification
-  const redirectUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  redirectUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-  redirectUrl.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
-  redirectUrl.searchParams.set('response_type', 'code');
-  redirectUrl.searchParams.set('scope', 'email profile');
-  redirectUrl.searchParams.set('state', state);
-  
-  const response = NextResponse.redirect(redirectUrl.toString());
-  response.cookies.set('oauth_state', state, { 
-    httpOnly: true, 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 600, // 10 minutes
-  });
-  
-  return response;
 }

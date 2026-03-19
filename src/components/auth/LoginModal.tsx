@@ -159,7 +159,7 @@ export function LoginModal() {
     setEmailStatus(null);
   };
 
-  // Handle Google Sign In with Supabase
+  // Handle Google Sign In via server-side OAuth (fixes PKCE cookie issue)
   const handleGoogleSignIn = async () => {
     setSocialLoading('google');
     try {
@@ -171,19 +171,15 @@ export function LoginModal() {
         return;
       }
       
-      // Use Supabase OAuth
-      const { getSupabaseClient } = await import('@/lib/supabase/client');
-      const supabase = getSupabaseClient();
+      // Call server-side OAuth endpoint - this properly stores PKCE verifier in cookies
+      const response = await fetch('/api/auth/google', { method: 'POST' });
+      const data = await response.json();
       
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) {
-        setError(error.message || 'Failed to sign in with Google');
+      if (data.error) {
+        setError(data.error);
+      } else if (data.url) {
+        // Redirect to Google OAuth
+        window.location.href = data.url;
       }
     } catch (err) {
       console.error('Google sign in error:', err);
@@ -193,7 +189,7 @@ export function LoginModal() {
     }
   };
 
-  // Handle Apple Sign In with Supabase
+  // Handle Apple Sign In via server-side OAuth (fixes PKCE cookie issue)
   const handleAppleSignIn = async () => {
     setSocialLoading('apple');
     try {
@@ -205,19 +201,15 @@ export function LoginModal() {
         return;
       }
       
-      // Use Supabase OAuth
-      const { getSupabaseClient } = await import('@/lib/supabase/client');
-      const supabase = getSupabaseClient();
+      // Call server-side OAuth endpoint - this properly stores PKCE verifier in cookies
+      const response = await fetch('/api/auth/apple', { method: 'POST' });
+      const data = await response.json();
       
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) {
-        setError(error.message || 'Failed to sign in with Apple');
+      if (data.error) {
+        setError(data.error);
+      } else if (data.url) {
+        // Redirect to Apple OAuth
+        window.location.href = data.url;
       }
     } catch (err) {
       console.error('Apple sign in error:', err);
