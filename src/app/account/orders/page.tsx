@@ -16,6 +16,8 @@ import {
   X,
   AlertCircle,
   Ban,
+  Camera,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +33,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -113,6 +116,13 @@ export default function OrdersPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [orderToReview, setOrderToReview] = useState<Order | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewUsername, setReviewUsername] = useState('');
+  const [reviewImage, setReviewImage] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
   const { toast } = useToast();
 
   // Redirect if not logged in
@@ -159,11 +169,70 @@ export default function OrdersPage() {
     window.open(`/api/orders/receipt/${orderId}?print=1`, '_blank');
   };
 
-  const handleRequestReview = async (orderId: string) => {
-    toast({
-      title: 'Coming Soon',
-      description: 'Review feature will be available soon!',
-    });
+  const openReviewDialog = (order: Order) => {
+    setOrderToReview(order);
+    setReviewRating(5);
+    setReviewComment('');
+    setReviewUsername('');
+    setReviewImage('');
+    setShowReviewDialog(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!orderToReview || !reviewComment.trim() || !reviewUsername.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const response = await fetch('/api/community/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-customer-email': user?.email || '',
+        },
+        body: JSON.stringify({
+          orderId: orderToReview.id,
+          rating: reviewRating,
+          comment: reviewComment.trim(),
+          username: reviewUsername.trim(),
+          imageUrl: reviewImage.trim() || null,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: 'Review Submitted!',
+          description: data.message || 'Your review has been submitted and will be visible after approval.',
+        });
+        setShowReviewDialog(false);
+        // Refresh orders to update reviewed status
+        const ordersRes = await fetch('/api/orders', {
+          headers: { 'x-customer-email': user?.email || '' },
+        });
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setOrders(data.orders);
+        }
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to submit review');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to submit review',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const openReturnDialog = (order: Order) => {
@@ -537,12 +606,18 @@ export default function OrdersPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleRequestReview(order.id)}
+                            onClick={() => openReviewDialog(order)}
                             className="border-white/20 text-white hover:bg-white/10"
                           >
                             <Star className="w-4 h-4 mr-1" />
                             Review
                           </Button>
+                        )}
+                        {order.status === 'DELIVERED' && order.reviewed && (
+                          <Badge className="bg-green-500/20 text-green-400">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Reviewed
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -703,6 +778,147 @@ export default function OrdersPage() {
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold"
                 >
                   {cancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Dialog */}
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-400" />
+              Leave a Review
+            </DialogTitle>
+            <DialogDescription className="text-white/40">
+              Share your experience with order {orderToReview?.orderNumber}
+            </DialogDescription>
+          </DialogHeader>
+
+          {orderToReview && (
+            <div className="space-y-6 py-4">
+              {/* Order Items */}
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {orderToReview.items.map((item) => (
+                  <div key={item.id} className="flex-shrink-0 w-20">
+                    <div className="w-20 h-20 bg-zinc-800 rounded overflow-hidden">
+                      {item.productImage ? (
+                        <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="w-6 h-6 text-white/40" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-white/60 text-xs mt-1 truncate">{item.productName}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rating */}
+              <div>
+                <Label className="text-white/60 mb-3 block">Rating *</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className={cn(
+                          "w-8 h-8 transition-colors",
+                          star <= reviewRating
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-zinc-600"
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Username */}
+              <div>
+                <Label className="text-white/60 mb-2 block">Display Name *</Label>
+                <Input
+                  value={reviewUsername}
+                  onChange={(e) => setReviewUsername(e.target.value)}
+                  placeholder="@username"
+                  className="bg-zinc-800 border-white/10 text-white placeholder:text-white/30 focus:border-amber-400"
+                />
+                <p className="text-white/40 text-xs mt-1">This will be shown publicly with your review</p>
+              </div>
+
+              {/* Comment */}
+              <div>
+                <Label className="text-white/60 mb-2 block">Your Review *</Label>
+                <Textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share your experience with this order..."
+                  rows={4}
+                  className="bg-zinc-800 border-white/10 text-white placeholder:text-white/30 focus:border-amber-400 resize-none"
+                />
+              </div>
+
+              {/* Photo URL (optional) */}
+              <div>
+                <Label className="text-white/60 mb-2 block">Photo URL (optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={reviewImage}
+                    onChange={(e) => setReviewImage(e.target.value)}
+                    placeholder="https://example.com/photo.jpg"
+                    className="flex-1 bg-zinc-800 border-white/10 text-white placeholder:text-white/30 focus:border-amber-400"
+                  />
+                  <div className="w-12 h-12 bg-zinc-800 border border-white/10 rounded flex items-center justify-center overflow-hidden">
+                    {reviewImage ? (
+                      <img src={reviewImage} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ) : (
+                      <Camera className="w-5 h-5 text-white/40" />
+                    )}
+                  </div>
+                </div>
+                <p className="text-white/40 text-xs mt-1">Add a photo URL to showcase your items</p>
+              </div>
+
+              {/* Info Note */}
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <Star className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-amber-300">
+                  <p className="font-medium">Verified Purchase</p>
+                  <p className="mt-1">Your review will be marked as verified since you purchased this item. It will be visible after admin approval.</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReviewDialog(false)}
+                  disabled={submittingReview}
+                  className="flex-1 border-white/10 text-white/60 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview || !reviewComment.trim() || !reviewUsername.trim()}
+                  className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold"
+                >
+                  {submittingReview ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Review'
+                  )}
                 </Button>
               </div>
             </div>
