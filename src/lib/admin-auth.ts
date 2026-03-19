@@ -94,8 +94,11 @@ export const useAdminAuth = create<AdminAuthStore>()(
     }),
     {
       name: 'clothing-ctrl-admin-auth',
-      // Don't persist auth state - require login each session
-      partialize: () => ({}),
+      // Persist auth state so user stays logged in
+      partialize: (state) => ({
+        isAdminAuthenticated: state.isAdminAuthenticated,
+        adminUser: state.adminUser,
+      }),
     }
   )
 );
