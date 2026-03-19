@@ -263,7 +263,18 @@ model StoreSettings {
   bannerText      String?
   bannerLink      String?
   metaTitle       String?
-  metaDescription String?  
+  metaDescription String?
+  // Shipping settings
+  shippingNairobi          Float    @default(200)
+  shippingKenya            Float    @default(500)
+  shippingInternational    Float    @default(2000)
+  shippingFreeThreshold    Float?
+  // Loyalty settings
+  loyaltyPointsPerShilling Float    @default(0.01)
+  loyaltyBronzeThreshold   Int      @default(0)
+  loyaltySilverThreshold   Int      @default(200)
+  loyaltyGoldThreshold     Int      @default(500)
+  loyaltyPlatinumThreshold Int      @default(1000)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
