@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -130,7 +130,7 @@ export function StyleAssistant() {
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-black" />
+                  <Bot className="w-5 h-5 text-black" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-sm">Style Assistant</h3>
