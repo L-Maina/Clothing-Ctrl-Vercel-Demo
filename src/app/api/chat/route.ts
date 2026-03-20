@@ -5,15 +5,6 @@ import { db } from '@/lib/db';
 // Store conversations in memory (use database in production)
 const conversations = new Map<string, Array<{ role: string; content: string }>>();
 
-let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null;
-
-async function getZAI() {
-  if (!zaiInstance) {
-    zaiInstance = await ZAI.create();
-  }
-  return zaiInstance;
-}
-
 export async function POST(request: Request) {
   try {
     const { sessionId, message } = await request.json();
@@ -23,27 +14,33 @@ export async function POST(request: Request) {
     }
 
     // Get products for context
-    const products = await db.product.findMany({
-      take: 10,
-      include: { category: true },
-    });
+    let productContext: Array<{ name: string; price: number; category: string; colors: string[]; description: string }> = [];
+    try {
+      const products = await db.product.findMany({
+        take: 10,
+        include: { category: true },
+      });
 
-    const productContext = products.map(p => {
-      let colors: string[] = [];
-      try {
-        colors = JSON.parse(p.colors || '[]');
-      } catch {
-        colors = [];
-      }
-      
-      return {
-        name: p.name,
-        price: p.price,
-        category: p.category.name,
-        colors: colors,
-        description: p.description?.slice(0, 100) || '',
-      };
-    });
+      productContext = products.map(p => {
+        let colors: string[] = [];
+        try {
+          colors = JSON.parse(p.colors || '[]');
+        } catch {
+          colors = [];
+        }
+        
+        return {
+          name: p.name,
+          price: p.price,
+          category: p.category.name,
+          colors: colors,
+          description: p.description?.slice(0, 100) || '',
+        };
+      });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      // Continue without product context
+    }
 
     const productListText = productContext.length > 0 
       ? `Available products (use these in recommendations):\n${JSON.stringify(productContext, null, 2)}`
@@ -69,9 +66,10 @@ Guidelines:
 - Mention prices when recommending products`;
 
     // Get or create conversation history
-    let history = conversations.get(sessionId) || [
-      { role: 'assistant', content: systemPrompt }
-    ];
+    let history = conversations.get(sessionId);
+    if (!history) {
+      history = [{ role: 'assistant', content: systemPrompt }];
+    }
 
     // Add user message
     history.push({ role: 'user', content: message });
@@ -81,8 +79,9 @@ Guidelines:
       history = [history[0], ...history.slice(-19)];
     }
 
-    // Get completion
-    const zai = await getZAI();
+    // Create fresh ZAI instance for each request (more reliable)
+    const zai = await ZAI.create();
+    
     const completion = await zai.chat.completions.create({
       messages: history as Array<{ role: 'assistant' | 'user'; content: string }>,
       thinking: { type: 'disabled' }
@@ -104,6 +103,7 @@ Guidelines:
     console.error('Chat error:', error);
     return NextResponse.json({ 
       error: 'Failed to process message',
+      details: error instanceof Error ? error.message : 'Unknown error',
       response: 'Sorry, something went wrong. Please try again.' 
     }, { status: 500 });
   }

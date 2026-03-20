@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -110,11 +110,11 @@ export function StyleAssistant() {
         className={cn(
           "fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300",
           isOpen ? "opacity-0 pointer-events-none scale-90" : "opacity-100 hover:scale-110",
-          "bg-gradient-to-br from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black"
+          "bg-amber-400 hover:bg-amber-300 text-black"
         )}
         aria-label="Open Style Assistant"
       >
-        <Sparkles className="w-6 h-6" />
+        <MessageCircle className="w-6 h-6" />
       </motion.button>
 
       {/* Chat Window */}
@@ -129,8 +129,8 @@ export function StyleAssistant() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-black" />
+                <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-black" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-sm">Style Assistant</h3>
