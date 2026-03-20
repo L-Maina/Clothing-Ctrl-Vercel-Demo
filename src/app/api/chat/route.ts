@@ -28,13 +28,26 @@ export async function POST(request: Request) {
       include: { category: true },
     });
 
-    const productContext = products.map(p => ({
-      name: p.name,
-      price: p.price,
-      category: p.category.name,
-      colors: JSON.parse(p.colors),
-      description: p.description.slice(0, 100),
-    }));
+    const productContext = products.map(p => {
+      let colors: string[] = [];
+      try {
+        colors = JSON.parse(p.colors || '[]');
+      } catch {
+        colors = [];
+      }
+      
+      return {
+        name: p.name,
+        price: p.price,
+        category: p.category.name,
+        colors: colors,
+        description: p.description?.slice(0, 100) || '',
+      };
+    });
+
+    const productListText = productContext.length > 0 
+      ? `Available products (use these in recommendations):\n${JSON.stringify(productContext, null, 2)}`
+      : 'We currently have products being added to our collection. Feel free to ask about general fashion advice, styling tips, or our featured brands.';
 
     const systemPrompt = `You are a sophisticated AI fashion stylist for Clothing Ctrl, a luxury multi-brand fashion retailer. We carry brands like Gucci, Prada, Balenciaga, Chrome Hearts, Carhartt WIP, and more.
 
@@ -44,11 +57,10 @@ Your personality:
 - Up-to-date on fashion trends and styling
 - Helpful with sizing and fit advice
 
-Available products (use these in recommendations):
-${JSON.stringify(productContext, null, 2)}
+${productListText}
 
 Guidelines:
-- Recommend specific products from our collection
+- Recommend specific products from our collection when available
 - Suggest outfit combinations and styling tips
 - Help with sizing and fit questions
 - Be enthusiastic about designer fashion

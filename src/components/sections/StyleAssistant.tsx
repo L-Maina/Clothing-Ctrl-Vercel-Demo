@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { X, Send, Sparkles, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -103,17 +103,18 @@ export function StyleAssistant() {
     <>
       {/* Floating Button */}
       <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5, duration: 0.3 }}
         onClick={() => setIsOpen(true)}
         className={cn(
-          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300",
-          isOpen ? "opacity-0 pointer-events-none" : "opacity-100",
-          "bg-amber-400 hover:bg-amber-300 text-black"
+          "fixed bottom-6 right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all duration-300",
+          isOpen ? "opacity-0 pointer-events-none scale-90" : "opacity-100 hover:scale-110",
+          "bg-gradient-to-br from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black"
         )}
+        aria-label="Open Style Assistant"
       >
-        <MessageCircle className="w-6 h-6" />
+        <Sparkles className="w-6 h-6" />
       </motion.button>
 
       {/* Chat Window */}
@@ -123,13 +124,13 @@ export function StyleAssistant() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[350px] h-[500px] bg-zinc-950 border border-white/10 rounded-lg shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-[70] w-[350px] h-[500px] bg-zinc-950 border border-white/10 rounded-lg shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-black" />
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-black" />
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-sm">Style Assistant</h3>
